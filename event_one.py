@@ -28,7 +28,7 @@ class RotateLeft(smach.State):
         global shutdown_requested
         while not shutdown_requested:
 
-            target_heading = (self.callbacks.heading + 90) % 360
+            target_heading = (self.callbacks.bot_odom_heading + 90) % 360
 
             turning = True
             previous_difference = None
@@ -36,7 +36,7 @@ class RotateLeft(smach.State):
             while turning:
                 if shutdown_requested: # Basically ctrl+C
                     return 'done1'
-                difference = minimum_angle_between_headings(target_heading, self.callbacks.heading)
+                difference = minimum_angle_between_headings(target_heading, self.callbacks.bot_odom_heading)
 
                 if previous_difference is None:
                     self.twist.angular.z = angularSpeed
@@ -95,7 +95,7 @@ class RotateRight(smach.State):
         global shutdown_requested
         while not shutdown_requested:
 
-            target_heading = self.callbacks.heading - 90
+            target_heading = self.callbacks.bot_odom_heading - 90
             if target_heading < 0:
                 target_heading = target_heading + 360
 
@@ -105,7 +105,7 @@ class RotateRight(smach.State):
             while turning:
                 if shutdown_requested:
                     return 'done1'
-                difference = minimum_angle_between_headings(target_heading, self.callbacks.heading)
+                difference = minimum_angle_between_headings(target_heading, self.callbacks.bot_odom_heading)
 
                 if previous_difference is None:
                     self.twist.angular.z = angularSpeed

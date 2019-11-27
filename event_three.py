@@ -41,10 +41,10 @@ class OdomFollow(smach.State):
         else:
             distance = 0.3
 
-        while self.callbacks.pose is None:
+        while self.callbacks.bot_odom_position is None:
             time.sleep(1)
 
-        sp = self.callbacks.pose
+        sp = self.callbacks.bot_odom_position
         ep = sp
 
         while math.sqrt((sp.x - ep.x) ** 2 + (sp.y - ep.y) ** 2) < distance:
@@ -75,7 +75,7 @@ class OdomFollow(smach.State):
                 self.twist.angular.z = rotation
                 self.cmd_vel_pub.publish(self.twist)
                 # END CONTROL
-                ep = self.callbacks.pose
+                ep = self.callbacks.bot_odom_position
 
         self.twist.linear.x = 0
         self.twist.angular.z = 0
@@ -95,14 +95,14 @@ class RotateLeft(smach.State):
         global shutdown_requested
         while not shutdown_requested:
 
-            target_heading = (self.callbacks.heading + 90) % 360
+            target_heading = (self.callbacks.bot_odom_heading + 90) % 360
 
             turning = True
             previous_difference = None
             while turning:
                 if shutdown_requested:
                     return 'done3'
-                difference = minimum_angle_between_headings(target_heading, self.callbacks.heading)
+                difference = minimum_angle_between_headings(target_heading, self.callbacks.bot_odom_heading)
                 #print(difference)
 
                 if previous_difference is None:
@@ -170,7 +170,7 @@ class RotateRight(smach.State):
         global number_of_checks
         while not shutdown_requested:
 
-            target_heading = self.callbacks.heading - 90
+            target_heading = self.callbacks.bot_odom_heading - 90
             if target_heading < 0:
                 target_heading = target_heading + 360
 
@@ -179,7 +179,7 @@ class RotateRight(smach.State):
             while turning:
                 if shutdown_requested:
                     return 'done3'
-                difference = minimum_angle_between_headings(target_heading, self.callbacks.heading)
+                difference = minimum_angle_between_headings(target_heading, self.callbacks.bot_odom_heading)
 
                 if previous_difference is None:
                     self.twist.angular.z = -0.4

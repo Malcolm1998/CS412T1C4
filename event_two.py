@@ -32,7 +32,7 @@ class RotateLeft(smach.State):
         global checked
         while not shutdown_requested:
 
-            target_heading = (self.callbacks.heading + 90) % 360
+            target_heading = (self.callbacks.bot_odom_heading + 90) % 360
             val = turn(self, target_heading)
             if val != None: return val
             # turning = True
@@ -40,7 +40,7 @@ class RotateLeft(smach.State):
             # while turning:
             #     if shutdown_requested:
             #         return 'done2'
-            #     difference = minimum_angle_between_headings(target_heading, self.callbacks.heading)
+            #     difference = minimum_angle_between_headings(target_heading, self.callbacks.bot_odom_heading)
             #
             #     if previous_difference is None:
             #         self.twist.angular.z = 0.4
@@ -157,10 +157,10 @@ class Stop(smach.State):
             print("THE DISTANCE IS 0.6")
             distance = 1
 
-        while self.callbacks.pose is None:
+        while self.callbacks.bot_odom_position is None:
             time.sleep(1)
 
-        sp = self.callbacks.pose
+        sp = self.callbacks.bot_odom_position
         ep = sp
 
         start = time.time()
@@ -194,7 +194,7 @@ class Stop(smach.State):
                 self.twist.angular.z = rotation
                 self.cmd_vel_pub.publish(self.twist)
                 # END CONTROL
-                ep = self.callbacks.pose
+                ep = self.callbacks.bot_odom_position
             else:
                 self.twist.linear.x = 2.0
                 self.cmd_vel_pub.publish(self.twist)
@@ -262,14 +262,14 @@ class Rotate180(smach.State):
         global shutdown_requested
         while not shutdown_requested:
 
-            target_heading = (self.callbacks.heading + 180) % 360
+            target_heading = (self.callbacks.bot_odom_heading + 180) % 360
 
             turning = True
             previous_difference = None
             while turning:
                 if shutdown_requested:
                     return 'done2'
-                difference = minimum_angle_between_headings(target_heading, self.callbacks.heading)
+                difference = minimum_angle_between_headings(target_heading, self.callbacks.bot_odom_heading)
 
                 if previous_difference is None:
                     self.twist.angular.z = 0.4
@@ -309,7 +309,7 @@ def turn(classObj, target_heading):
     while turning:
         if shutdown_requested:
             return 'done2'
-        difference = minimum_angle_between_headings(target_heading, classObj.callbacks.heading)
+        difference = minimum_angle_between_headings(target_heading, classObj.callbacks.bot_odom_heading)
 
         if previous_difference is None:
             classObj.twist.angular.z = turnRate

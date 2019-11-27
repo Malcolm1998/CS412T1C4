@@ -14,7 +14,10 @@ import rospy
 import smach
 import smach_ros
 import math
+import trig
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import Point
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import Joy
 from tf.transformations import euler_from_quaternion
@@ -94,10 +97,10 @@ class Stop(smach.State):
         else:
             distance = 0.6
 
-        while self.callbacks.pose is None:
+        while self.callbacks.bot_odom_position is None:
             time.sleep(1)
 
-        sp = self.callbacks.pose
+        sp = self.callbacks.bot_odom_position
         ep = sp
 
         while math.sqrt((sp.x - ep.x) ** 2 + (sp.y - ep.y) ** 2) < distance:
@@ -128,7 +131,7 @@ class Stop(smach.State):
                 self.twist.angular.z = rotation
                 self.cmd_vel_pub.publish(self.twist)
                 # END CONTROL
-                ep = self.callbacks.pose
+                ep = self.callbacks.bot_odom_position
 
         self.twist.linear.x = 0
         self.twist.angular.z = 0
@@ -279,52 +282,57 @@ class Callbacks:
         self.secondary_w = None
         self.secondary_d = None
 
-        self.pose = None
-        self.heading = None
+        self.bot_odom_position = None
+        self.bot_odom_heading = None
+
+        self.bot_map_pose = None
+        self.bot_map_position = None
+        self.bot_map_heading = None
+
+        self.box_marker_id = 6
+        self.box_target_marker_id = 30
+        self.box_position = None
+        self.box_target_position = None
 
         self.target_box = 1
         self.tag_visible = False
         self.stopWaiting = False
 
     def odometry_callback(self, msg):
-        self.pose = msg.pose.pose.position
+        self.bot_odom_position = msg.pose.pose.position
         yaw = euler_from_quaternion([
             msg.pose.pose.orientation.x,
             msg.pose.pose.orientation.y,
             msg.pose.pose.orientation.z,
             msg.pose.pose.orientation.w
         ])[2]
-        self.heading = (yaw + math.pi) * (180 / math.pi)
+        self.bot_odom_heading = (yaw + math.pi) * (180 / math.pi)
         return
 
     def controller_callback(self, msg):
-        if msg.buttons[6] == 1:
-            self.stopWaiting = False
-        elif msg.buttons[7] == 1:
+        if msg.buttons[7] == 1:
             self.stopWaiting = True
-        elif msg.buttons[2] == 1:
-            self.target_box = 2
-        elif msg.buttons[3] == 1:
-            self.target_box = 3
-        elif msg.buttons[0] == 1:
-            self.target_box = 4
-        elif msg.axes[0] == 1:
-            self.target_box = 5
-        elif msg.axes[1] == -1:
-            self.target_box = 6
-        elif msg.axes[0] == -1:
-            self.target_box = 7
-        elif msg.axes[1] == 1:
-            self.target_box = 8
 
-    def marker_callback(self, msg):
-        valid_marker_ids = range(1, 11)
+    def marker_pose_callback(self, msg):
         if len(msg.markers) > 0:
             for marker in msg.markers:
-                if marker.id in valid_marker_ids:
-                    self.tag_visible = True
-                    return
-        self.tag_visible = False
+                if marker.id == self.box_marker_id:
+                    self.box_position = marker.pose.pose.position
+                elif marker.id == self.box_target_marker_id:
+                    yaw = euler_from_quaternion([0.0, 0.0, 0.0889745806541, 0.996033897012])[2]
+                    heading = (yaw + math.pi) * (180 / math.pi)
+                    self.box_target_position = trig.get_point(marker.pose.pose.position, 0.30, heading)
+
+    def bot_pose_callback(self, msg):
+        self.bot_map_pose = msg
+        self.bot_map_position = msg.pose.pose.position
+        yaw = euler_from_quaternion([
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
+        ])[2]
+        self.bot_map_heading = (yaw + math.pi) * (180 / math.pi)
 
     def main_image_callback(self, msg):
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -418,8 +426,6 @@ class Callbacks:
         cv2.waitKey(3)
 
 
-
-
 def main():
     global button_start
     global shutdown_requested
@@ -431,8 +437,9 @@ def main():
     #red_count = 0
     #red_count = 1
     #red_count = 2 # Event 2
-    #red_count = 3  # Event four
-    red_count = 4  # Event 3
+    red_count = 3  # Event four
+    #red_count = 4  # Event 3
+    #red_count = 6  # Last stop
 
     button_start = False
 
@@ -447,7 +454,8 @@ def main():
     callbacks = Callbacks()
     rospy.Subscriber('/usb_cam/image_raw', Image, callbacks.secondary_image_callback)
     rospy.Subscriber('camera/rgb/image_raw', Image, callbacks.main_image_callback)
-    rospy.Subscriber('ar_pose_marker', AlvarMarkers, callbacks.marker_callback)
+    rospy.Subscriber('ar_pose_marker', AlvarMarkers, callbacks.marker_pose_callback)
+    rospy.Subscriber('amcl_pose', PoseWithCovarianceStamped, callbacks.bot_pose_callback)
     rospy.Subscriber("odom", Odometry, callbacks.odometry_callback)
     rospy.Subscriber('joy', Joy, callbacks.controller_callback)
 
