@@ -23,7 +23,7 @@ from kobuki_msgs.msg import Sound
 
 class Localize(smach.State):
     def __init__(self, callbacks):
-        smach.State.__init__(self, outcomes=['done4', 'find_markers', 'box2', 'box8'])
+        smach.State.__init__(self, outcomes=['done4', 'find_markers', 'box2', 'box8', 'box1'])
 
         self.initial = PoseWithCovarianceStamped()
 
@@ -61,7 +61,7 @@ class Localize(smach.State):
         self.initial.pose.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                         0.0, 0.0, 0.0, 0.0, 0.06853891945200942]
-        self.initial_pub.publish(self.initial)
+        self.initial_pub.publish(self.initial)  # publish to get a more precise location
 
         turning = True
         previous_difference = None
@@ -75,7 +75,7 @@ class Localize(smach.State):
                 self.twist.angular.z = 0.4
                 self.cmd_vel_pub.publish(self.twist)
             else:
-                if difference < 1:
+                if abs(difference) < 1:
                     turning = False
                     self.twist.angular.z = 0
                     self.cmd_vel_pub.publish(self.twist)
@@ -90,11 +90,13 @@ class Localize(smach.State):
             self.led2_pub.publish(3)  # red
             self.sound_pub.publish(1)
             time.sleep(1)
+            print("Found box")
 
         if self.callbacks.box_target_position is not None:
             self.led1_pub.publish(1)  # Green
             self.sound_pub.publish(1)
             time.sleep(1)
+            print("Found box target")
 
         if shutdown_requested:
             return 'done4'
@@ -102,8 +104,8 @@ class Localize(smach.State):
         if self.callbacks.box_target_position is None or self.callbacks.box_position is None:
             return 'find_markers'
         else:
-            self.led2_pub.publish(3)  # Off
-            self.led1_pub.publish(1)  # Off
+            self.led2_pub.publish(0)  # Off
+            self.led1_pub.publish(0)  # Off
             distance_from_box_target = trig.get_distance(self.callbacks.bot_map_position, self.callbacks.box_target_position)
             distance_from_box = trig.get_distance(self.callbacks.bot_map_position, self.callbacks.box_position)
             if distance_from_box < distance_from_box_target:
@@ -121,12 +123,12 @@ class FindMarkers(smach.State):
         self.target = MoveBaseGoal()
         self.target.target_pose.header.frame_id = "map"
         self.target.target_pose.header.stamp = rospy.Time.now()
-        self.target.target_pose.pose.position.x = -2.36646936837
-        self.target.target_pose.pose.position.y = -1.27823477483
+        self.target.target_pose.pose.position.x = -0.534573222531
+        self.target.target_pose.pose.position.y = -2.64808881431
         self.target.target_pose.pose.orientation.x = 0.0
         self.target.target_pose.pose.orientation.y = 0.0
-        self.target.target_pose.pose.orientation.z = -0.991971583453
-        self.target.target_pose.pose.orientation.w = 0.126460972722
+        self.target.target_pose.pose.orientation.z = 0.824532695146
+        self.target.target_pose.pose.orientation.w = 0.56581431109
 
         self.callbacks = callbacks
         self.led1_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
@@ -169,7 +171,7 @@ class FindMarkers(smach.State):
 
 class MoveCloseToBox(smach.State):
     def __init__(self, callbacks):
-        smach.State.__init__(self, outcomes=['done4', 'push'])
+        smach.State.__init__(self, outcomes=['done4', 'push', 'box1'])
         self.callbacks = callbacks
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
         self.client.wait_for_server()
@@ -185,8 +187,8 @@ class MoveCloseToBox(smach.State):
         get_point_heading = trig.get_heading_between_points(self.callbacks.box_position, self.callbacks.box_target_position)
 
         # Move around box if bot is closer to goal than box
-        box_distance_to_goal = trig.get_distance(self.callbacks.box_position, self.callbacks.box_target_position)
-        bot_distance_to_goal = trig.get_distance(self.callbacks.bot_position, self.callbacks.box_target_position)
+        box_distance_to_goal = trig.get_distance(self.callbacks.bot_map_position, self.callbacks.box_target_position)
+        bot_distance_to_goal = trig.get_distance(self.callbacks.bot_map_position, self.callbacks.box_target_position)
         offset = 0
 
         self.clear_costmap()
@@ -210,8 +212,8 @@ class MoveCloseToBox(smach.State):
             #print(self.callbacks.bot_position)
             #print("------------------")
 
-            bot_distance_to_left = trig.get_distance(self.callbacks.bot_position, left_goal_position)
-            bot_distance_to_right = trig.get_distance(self.callbacks.bot_position, right_goal_position)
+            bot_distance_to_left = trig.get_distance(self.callbacks.bot_map_position, left_goal_position)
+            bot_distance_to_right = trig.get_distance(self.callbacks.bot_map_position, right_goal_position)
 
             if bot_distance_to_left < bot_distance_to_right:
                 print("Going to left side")
@@ -240,8 +242,9 @@ class MoveCloseToBox(smach.State):
 
             print("sending intermediate goal")
             self.client.send_goal(self.goal)
-            print(self.client.wait_for_result())
-            print(self.client.get_result())
+            self.client.wait_for_result()
+            if self.callbacks.move_base_status == 4:
+                return 'box1'
 
             self.clear_costmap()
 
@@ -268,6 +271,9 @@ class MoveCloseToBox(smach.State):
         print("Going to main goal")
         self.client.send_goal(self.goal)
         self.client.wait_for_result()
+        print(self.callbacks.move_base_status)
+        if self.callbacks.move_base_status == 4:
+            return 'box1'
 
         if shutdown_requested:
             return 'done4'
@@ -291,8 +297,8 @@ class Push(smach.State):
         # self.callbacks.middle_bumper_pressed
         # self.callbacks.right_bumper_pressed
         # Get the current x position, we'll move half a meter backwards
-        initX = self.callbacks.bot_position.x
-        currX = self.callbacks.bot_position.x
+        initX = self.callbacks.bot_odom_position.x
+        currX = self.callbacks.bot_odom_position.x
         # Timer incase we can't backup or are taking too long
         start = time.time()
         duration = 10
@@ -300,7 +306,7 @@ class Push(smach.State):
         detected_first_press = False
         returnState = 'reverse'
         while time.time() - start < duration and not detected_first_press:
-            self.move_command(0.2)
+            self.move_command(0.2, False)
             if shutdown_requested:
                 return 'done4'
             # If we hit the box, the bumper should be pressed and we keep going
@@ -310,12 +316,13 @@ class Push(smach.State):
 
         return returnState
 
-    def move_command(self, speed):
+    def move_command(self, speed, turn_enabled):
         # this way I didn't have to write the 2 lines of code a million times
-        target_heading = trig.get_heading_between_points(self.callbacks.box_target_position, self.callbacks.bot_position)
-        error = trig.minimum_angle_between_headings(self.callbacks.bot_heading, target_heading)
+        target_heading = trig.get_heading_between_points(self.callbacks.box_target_position, self.callbacks.bot_map_position)
+        error = trig.minimum_angle_between_headings(self.callbacks.bot_map_heading, target_heading)
 
-        self.twist.angular.z = -error * 0.1
+        if turn_enabled:
+            self.twist.angular.z = -error * 0.1
         self.twist.linear.x = speed
         self.cmd_vel_pub.publish(self.twist)
 
@@ -327,11 +334,11 @@ class Push(smach.State):
             if self.callbacks.middle_bumper_pressed:
                 hit_time = time.time()
 
-            self.move_command(0.2)
+            self.move_command(0.2, True)
             if shutdown_requested:
                 return 'done4'
 
-            box_position = trig.get_point(self.callbacks.bot_position, 0.405, self.callbacks.bot_heading)
+            box_position = trig.get_point(self.callbacks.bot_map_position, 0.405, self.callbacks.bot_map_heading)
             if trig.get_distance(box_position, self.callbacks.box_target_position) < 0.15:
                 self.led1_pub.publish(1)  # green
                 self.led2_pub.publish(3)  # red
@@ -357,22 +364,19 @@ class Reverse(smach.State):
         self.callbacks.box_position = None
 
         # Get the current x position, we'll move half a meter backwards
-        initX = self.callbacks.bot_position.x
-        currX = self.callbacks.bot_position.x
-        # Timer incase we can't backup or are taking too long
-        start = time.time()
-        duration = 2
+        # initX = self.callbacks.bot_odom_position.x
+        # currX = self.callbacks.bot_odom_position.x
         # move backwards while moved < 0.5 meters and taking < 5 secs
-        while abs(currX-initX) < 1.5 and self.callbacks.box_position is None:
-            self.twist.linear.x = -0.4 #TODO 0.7
+        while self.callbacks.box_position is None:
+            self.twist.linear.x = -0.4  # TODO 0.7
             self.cmd_vel_pub.publish(self.twist)
-            currX = self.callbacks.bot_position.x
+            currX = self.callbacks.bot_odom_position.x
 
             if shutdown_requested:
                 return 'done4'
 
         # rospy.loginfo("Time! duration: {}".format(rospy.Time.now() - time))
-        return 'find_marker'
+        return 'move_close_to_box'  # TODO: handle lost box
 
 
 class Box1(smach.State):
@@ -447,8 +451,8 @@ class Box2(smach.State):
         self.target.target_pose.pose.position.y = -1.27823477483
         self.target.target_pose.pose.orientation.x = 0.0
         self.target.target_pose.pose.orientation.y = 0.0
-        self.target.target_pose.pose.orientation.z = -0.991971583453
-        self.target.target_pose.pose.orientation.w = 0.126460972722
+        self.target.target_pose.pose.orientation.z = -0.558697367983
+        self.target.target_pose.pose.orientation.w = 0.829371600074
 
         self.callbacks = callbacks
         self.led_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
@@ -583,8 +587,8 @@ class Box8(smach.State):
         self.target.target_pose.pose.position.y = -4.02047473645
         self.target.target_pose.pose.orientation.x = 0.0
         self.target.target_pose.pose.orientation.y = 0.0
-        self.target.target_pose.pose.orientation.z = -0.985633442886
-        self.target.target_pose.pose.orientation.w = 0.168898538375
+        self.target.target_pose.pose.orientation.z = 0.824532695146
+        self.target.target_pose.pose.orientation.w = 0.56581431109
 
         self.callbacks = callbacks
         self.led_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
@@ -651,12 +655,12 @@ def get_state_machine(callbacks):
     with sm_event_4:
         smach.StateMachine.add('LOCALIZE', Localize(callbacks),
                                transitions={'done4': 'DONE4', 'find_markers': 'FIND_MARKERS',
-                                            'box2': 'BOX2', 'box8': 'BOX8'})
+                                            'box2': 'BOX2', 'box8': 'BOX8', 'box1': 'BOX1'})
 
         smach.StateMachine.add('FIND_MARKERS', FindMarkers(callbacks),
                                transitions={'done4': 'DONE4', 'box1': 'BOX1', 'box2': 'BOX2', 'box8': 'BOX8'})
         smach.StateMachine.add('MOVE_CLOSE_TO_BOX', MoveCloseToBox(callbacks),
-                               transitions={'done4': 'DONE4', 'push': 'PUSH'})
+                               transitions={'done4': 'DONE4', 'push': 'PUSH', 'box1': 'BOX1'})
         smach.StateMachine.add('PUSH', Push(callbacks),
                                transitions={'done4': 'DONE4', 'box1': 'BOX1', 'reverse': 'REVERSE'})
         smach.StateMachine.add('REVERSE', Reverse(callbacks),

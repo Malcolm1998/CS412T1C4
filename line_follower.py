@@ -25,6 +25,7 @@ from ar_track_alvar_msgs.msg import AlvarMarkers
 from nav_msgs.msg import Odometry
 from kobuki_msgs.msg import Led
 from kobuki_msgs.msg import Sound
+from actionlib_msgs.msg import GoalStatusArray
 
 global shutdown_requested
 global red_count
@@ -33,12 +34,12 @@ global red_count
 class Wait(smach.State):
 
     def __init__(self, callbacks):
-        smach.State.__init__(self, outcomes=['follow_line', 'done'])
+        smach.State.__init__(self, outcomes=['follow_line', 'done', 'event_four'])
         self.callbacks = callbacks
 
     def execute(self, userdata):
         global shutdown_requested
-        return 'follow_line'  # TODO: take out debug line
+        return 'event_four'  # TODO: take out debug line
         #while not shutdown_requested:
         #    if self.callbacks.stopWaiting:
         #        return 'follow_line'
@@ -217,7 +218,7 @@ class FollowLine(smach.State):
                     if red_pixel_count > 1000 and ry > 180 and red_count == 4:
                         print(red_pixel_count)
                         print(ry)
-                        print("Red count 3 line found")
+                        print("Red count 4 line found")
                         return 'stop'
 
                     if red_pixel_count > 1000 and ry > 200:
@@ -290,13 +291,17 @@ class Callbacks:
         self.bot_map_heading = None
 
         self.box_marker_id = 6
-        self.box_target_marker_id = 30
+        self.box_target_marker_id = 20
         self.box_position = None
         self.box_target_position = None
 
-        self.target_box = 1
-        self.tag_visible = False
         self.stopWaiting = False
+
+        self.left_bumper_pressed = False
+        self.middle_bumper_pressed = False
+        self.right_bumper_pressed = False
+
+        self.move_base_status = None
 
     def odometry_callback(self, msg):
         self.bot_odom_position = msg.pose.pose.position
@@ -323,7 +328,7 @@ class Callbacks:
                     heading = (yaw + math.pi) * (180 / math.pi)
                     self.box_target_position = trig.get_point(marker.pose.pose.position, 0.30, heading)
 
-    def bot_pose_callback(self, msg):
+    def bot_map_pose_callback(self, msg):
         self.bot_map_pose = msg
         self.bot_map_position = msg.pose.pose.position
         yaw = euler_from_quaternion([
@@ -333,6 +338,23 @@ class Callbacks:
             msg.pose.pose.orientation.w
         ])[2]
         self.bot_map_heading = (yaw + math.pi) * (180 / math.pi)
+
+    def bumper_callback(self, msg):
+        # bumper = 0 = Left
+        # bumper = 1 = Middle
+        # bumper = 2 = Right
+        if msg.bumper == 0:
+            self.left_bumper_pressed = bool(msg.state)
+        elif msg.bumper == 1:
+            self.middle_bumper_pressed = bool(msg.state)
+        else:
+            self.right_bumper_pressed = bool(msg.state)
+
+    def move_base_status_callback(self, msg):
+        # 1 == active
+        # 3 == success
+        # 4 == aborted
+        self.move_base_status = msg.status_list[0].status
 
     def main_image_callback(self, msg):
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -452,10 +474,11 @@ def main():
     rospy.init_node('line_follow_bot')
 
     callbacks = Callbacks()
+    rospy.Subscriber('/move_base/status', GoalStatusArray, callbacks.move_base_status_callback, queue_size=1)
+    rospy.Subscriber('amcl_pose', PoseWithCovarianceStamped, callbacks.bot_map_pose_callback)
     rospy.Subscriber('/usb_cam/image_raw', Image, callbacks.secondary_image_callback)
     rospy.Subscriber('camera/rgb/image_raw', Image, callbacks.main_image_callback)
     rospy.Subscriber('ar_pose_marker', AlvarMarkers, callbacks.marker_pose_callback)
-    rospy.Subscriber('amcl_pose', PoseWithCovarianceStamped, callbacks.bot_pose_callback)
     rospy.Subscriber("odom", Odometry, callbacks.odometry_callback)
     rospy.Subscriber('joy', Joy, callbacks.controller_callback)
 
@@ -464,7 +487,7 @@ def main():
 
     with sm_turtle:
         smach.StateMachine.add('WAIT', Wait(callbacks),
-                               transitions={'follow_line': 'FOLLOW_LINE', 'done': 'DONE'})
+                               transitions={'follow_line': 'FOLLOW_LINE', 'done': 'DONE', 'event_four': 'EVENT_FOUR'})
         smach.StateMachine.add('FOLLOW_LINE', FollowLine(callbacks),
                                transitions={'stop': 'STOP', 'done': 'DONE'})
         smach.StateMachine.add('STOP', Stop(callbacks),
