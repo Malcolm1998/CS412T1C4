@@ -120,7 +120,7 @@ def shapeDetection(colour, camera):
             if confidence == results["square"]: return "square"
             if confidence == results["triangle"]: return "triangle"
         count += 1
-    return "triangle"
+    return "No Shape found"
 
 
 def logitechRed_callback(msg):

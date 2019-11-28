@@ -46,7 +46,7 @@ class Wait(smach.State):
         global shutdown_requested
         self.led1_pub.publish(0)
         self.led2_pub.publish(0)
-        return 'event_four'  # TODO: take out debug line
+        return 'follow_line'  # TODO: take out debug line
         #while not shutdown_requested:
         #    if self.callbacks.stopWaiting:
         #        return 'follow_line'
@@ -96,8 +96,8 @@ class Stop(smach.State):
         red_count = (red_count + 1)
 
         red_events = [1, 3]
-        red_stops = [0, 2, 4, 5, 7]
-        red_end = [7]
+        red_stops = [0, 2, 4, 5, 6]
+        red_end = [6]
         if red_count in red_stops:
             distance = 0.4
         else:

@@ -112,7 +112,7 @@ class Localize(smach.State):
         if shutdown_requested:
             return 'done4'
 
-        return 'box8'  # TODO: return 'box1'
+        return 'box1'  # TODO: return 'box1'
 
         '''
         if self.callbacks.box_target_position is None or self.callbacks.box_position is None:
