@@ -129,21 +129,14 @@ def logitechRed_callback(msg):
     image = bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    secondary_h, secondary_w, secondary_d = image.shape
-    # upper_red_a = numpy.array([20, 255, 255])
-    # lower_red_a = numpy.array([0, 100, 100])
-    # red_mask_a = cv2.inRange(hsv, lower_red_a, upper_red_a)
-    #
-    # upper_red_b = numpy.array([255, 255, 255])
-    # lower_red_b = numpy.array([150, 100, 100])
-    # red_mask_b = cv2.inRange(hsv, lower_red_b, upper_red_b)
-    # red_mask = cv2.bitwise_or(red_mask_a, red_mask_b)
-
+    h, w, d = image.shape
     upper_red = numpy.array([177,255, 255])
     lower_red = numpy.array([0, 150, 50])
     red_mask = cv2.inRange(hsv, lower_red, upper_red)
 
     blur = cv2.medianBlur(red_mask, 7)
+    blur[0:h, 0:w/10] = 0
+    blur[0:h, 9*w/10*w:w] = 0
     thresh = cv2.threshold(blur, 250, 255, 0)[1]
     image2, contours, hierarchy = cv2.findContours(thresh, 2, 1)
     if len(contours) > 0:
@@ -158,20 +151,11 @@ def cam1red_callback(msg):
     image = bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    secondary_h, secondary_w, secondary_d = image.shape
-    # upper_red_a = numpy.array([20, 255, 255])
-    # lower_red_a = numpy.array([0, 100, 100])
-    # red_mask_a = cv2.inRange(hsv, lower_red_a, upper_red_a)
-    #
-    # upper_red_b = numpy.array([255, 255, 255])
-    # lower_red_b = numpy.array([150, 100, 100])
-    # red_mask_b = cv2.inRange(hsv, lower_red_b, upper_red_b)
-    # red_mask = cv2.bitwise_or(red_mask_a, red_mask_b)
+    h, w, d = image.shape
 
     upper_red = numpy.array([177,255, 255])
     lower_red = numpy.array([0, 150, 50])
     red_mask = cv2.inRange(hsv, lower_red, upper_red)
-
     blur = cv2.medianBlur(red_mask, 7)
     thresh = cv2.threshold(blur, 250, 255, 0)[1]
     image2, contours, hierarchy = cv2.findContours(thresh, 2, 1)
