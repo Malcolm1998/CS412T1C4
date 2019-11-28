@@ -85,7 +85,7 @@ def compareImages(cntT, cntS, cntC, cntI):
     return "triangle"
 
 
-def shapeDetection(colour, camera):
+def shapeDetection(colour, camera, p=False):
     ''' detect a shape given the colour and which camera we are using
     Parameters:
         colour (string): either red or green
@@ -114,6 +114,7 @@ def shapeDetection(colour, camera):
             if colour == "green": result = compareImages(cntT, cntS, cntC, cntG)
             elif colour == "red": result = compareImages(cntT, cntS, cntC, cntR)
             results[result] += 1
+        if p: print("results:\n{}".format(results))
         confidence = max(results.values())
         if confidence > 900:
             if confidence == results["circle"]: return "circle"
@@ -201,11 +202,15 @@ def main():
 
     # image_sub = rospy.Subscriber('cv_camera/image_raw',
                                       # Image, logitechRed_callback)
-    # image_sub = rospy.Subscriber('camera/rgb/image_raw',
-                                      # Image, logitechRed_callback)
+    image_sub = rospy.Subscriber('camera/rgb/image_raw',
+                                      Image, cam1green_callback)
+
     # image_sub = rospy.Subscriber('usb_cam/image_raw',
                                       # Image, logitechRed_callback)
-    # (cntT, cntS, cntC) = initC1Images()
+    colour = "green"
+    camera = 1
+    x = shapeDetection(colour, camera, p=True)
+    print(x)
 
 
 if __name__ == '__main__':
