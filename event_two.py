@@ -13,6 +13,11 @@ from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Joy
 import detect_shape
 from kobuki_msgs.msg import Sound
+import traceback
+
+import sys
+sys.path.insert(1, '/home/malcolm/Documents/CMPUT_412/Competition/CS412T1C4/shapeTesting')
+import v2
 
 global shutdown_requested
 global checked
@@ -152,10 +157,10 @@ class Stop(smach.State):
         global checked
 
         if not checked:
-            distance = 0
+            distance = 0.1
         else:
             print("THE DISTANCE IS 0.6")
-            distance = 1
+            distance = 1.2
 
         while self.callbacks.bot_odom_position is None:
             time.sleep(1)
@@ -169,6 +174,7 @@ class Stop(smach.State):
             #print(str(math.sqrt((sp.x - ep.x) ** 2 + (sp.y - ep.y) ** 2)) + " "+str(distance))
             if shutdown_requested:
                 return 'done2'
+
             h = self.callbacks.secondary_h
             w = self.callbacks.secondary_w
             search_top = 3 * h / 4
@@ -178,7 +184,7 @@ class Stop(smach.State):
             bottom_white_mask[search_bot:h, 0:w] = 0
 
             M = cv2.moments(bottom_white_mask)
-            if M['m00'] > 0:
+            if M['m00'] > 10:
                 cx = int(M['m10'] / M['m00'])
                 cy = int(M['m01'] / M['m00'])
                 # BEGIN CONTROL
@@ -236,15 +242,20 @@ class Check(smach.State):
                 symbol_green_mask[0:h / 4, 0:w] = 0
                 symbol_green_mask[3 * h / 4:h, 0:w] = 0
 
-                count = detect_shape.count_objects(symbol_green_mask)
-                count += detect_shape.count_objects(symbol_red_mask)
+                count = v2.count_objects(symbol_green_mask)
+                count += v2.count_objects(symbol_red_mask)
                 for i in range(int(count)):
                     self.sound_pub.publish(1)
                     time.sleep(1)
                 checked = True
 
-                previous_shape = detect_shape.detect_shape(symbol_green_mask, h, w)
-                print(previous_shape)
+                #previous_shape = detect_shape.detect_shape(symbol_green_mask, h, w)
+                try:
+                    previous_shape = v2.shapeDetection('green', 1)
+                    print("green shape detected:" + previous_shape)
+                except Exception as e:
+                    print(e)
+                    traceback.print_exc()
 
             return 'rotate_180'
         return 'done1'

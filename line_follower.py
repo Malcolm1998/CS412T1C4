@@ -26,6 +26,9 @@ from nav_msgs.msg import Odometry
 from kobuki_msgs.msg import Led
 from kobuki_msgs.msg import Sound
 from actionlib_msgs.msg import GoalStatusArray
+import sys
+sys.path.insert(1, '/home/malcolm/Documents/CMPUT_412/Competition/CS412T1C4/shapeTesting')
+import v2
 
 global shutdown_requested
 global red_count
@@ -36,9 +39,13 @@ class Wait(smach.State):
     def __init__(self, callbacks):
         smach.State.__init__(self, outcomes=['follow_line', 'done', 'event_four'])
         self.callbacks = callbacks
+        self.led1_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
+        self.led2_pub = rospy.Publisher('/mobile_base/commands/led2', Led, queue_size=1)
 
     def execute(self, userdata):
         global shutdown_requested
+        self.led1_pub.publish(0)
+        self.led2_pub.publish(0)
         return 'event_four'  # TODO: take out debug line
         #while not shutdown_requested:
         #    if self.callbacks.stopWaiting:
@@ -61,9 +68,7 @@ class End(smach.State):
         self.led2_pub.publish(1)  # green
         self.sound_pub.publish(1)
 
-        start = time.time()
-        while time.time() - start < 5:
-            pass
+        time.sleep(5)
 
         self.led1_pub.publish(0)
         self.led2_pub.publish(0)
@@ -215,7 +220,7 @@ class FollowLine(smach.State):
                         print("Red count 3 line found")
                         return 'stop'
 
-                    if red_pixel_count > 1000 and ry > 180 and red_count == 4:
+                    if red_pixel_count > 1000 and ry > 190 and red_count == 4:
                         print(red_pixel_count)
                         print(ry)
                         print("Red count 4 line found")
@@ -354,9 +359,12 @@ class Callbacks:
         # 1 == active
         # 3 == success
         # 4 == aborted
-        self.move_base_status = msg.status_list[0].status
+        if len(msg.status_list) > 0:
+            self.move_base_status = msg.status_list[0].status
 
     def main_image_callback(self, msg):
+        v2.cam1green_callback(msg)  # For shape detection
+        v2.cam1red_callback(msg)  # For shape detection
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -396,6 +404,7 @@ class Callbacks:
         cv2.waitKey(3)
 
     def secondary_image_callback(self, msg):
+        v2.logitechRed_callback(msg) # For shape detection =
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -454,13 +463,13 @@ def main():
     global red_count
 
     # TESTING STUFF BELOW
-    event_two.previous_shape = 1
+    event_two.previous_shape = "triangle"
 
     #red_count = 0
     #red_count = 1
-    #red_count = 2 # Event 2
-    red_count = 3  # Event four
-    #red_count = 4  # Event 3
+    #red_count = 2  # Event 2
+    #red_count = 3  # Event four
+    red_count = 4  # Event 3
     #red_count = 6  # Last stop
 
     button_start = False

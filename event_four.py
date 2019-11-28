@@ -19,6 +19,11 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from kobuki_msgs.msg import Led
 from kobuki_msgs.msg import Sound
+import event_two
+import sys
+sys.path.insert(1, '/home/malcolm/Documents/CMPUT_412/Competition/CS412T1C4/shapeTesting')
+import v2
+import traceback
 
 
 class Localize(smach.State):
@@ -86,6 +91,7 @@ class Localize(smach.State):
             if previous_difference != difference:
                 previous_difference = difference
 
+        '''
         if self.callbacks.box_position is not None:
             self.led2_pub.publish(3)  # red
             self.sound_pub.publish(1)
@@ -97,10 +103,14 @@ class Localize(smach.State):
             self.sound_pub.publish(1)
             time.sleep(1)
             print("Found box target")
+        '''
 
         if shutdown_requested:
             return 'done4'
 
+        return 'box1'
+
+        '''
         if self.callbacks.box_target_position is None or self.callbacks.box_position is None:
             return 'find_markers'
         else:
@@ -112,6 +122,7 @@ class Localize(smach.State):
                 return 'box2'
             else:
                 return 'box8'
+        '''
 
 
 class FindMarkers(smach.State):
@@ -387,29 +398,30 @@ class Box1(smach.State):
 
         '''
         position: 
-            x: -1.52921782505
-            y: -0.964718068027
+            x: -1.5099166388
+            y: -0.890386754885
             z: 0.0
         orientation: 
             x: 0.0
             y: 0.0
-            z: 0.824532695146
-            w: 0.56581431109
-
+            z: 0.808986962348
+            w: 0.587826585611
         '''
 
         self.target = MoveBaseGoal()
         self.target.target_pose.header.frame_id = "map"
         self.target.target_pose.header.stamp = rospy.Time.now()
-        self.target.target_pose.pose.position.x = -1.54587139462
-        self.target.target_pose.pose.position.y = -0.972597373004
+        self.target.target_pose.pose.position.x = -1.5099166388
+        self.target.target_pose.pose.position.y = -0.890386754885
         self.target.target_pose.pose.orientation.x = 0.0
         self.target.target_pose.pose.orientation.y = 0.0
-        self.target.target_pose.pose.orientation.z = 0.824532695146
-        self.target.target_pose.pose.orientation.w = 0.56581431109
+        self.target.target_pose.pose.orientation.z = 0.853781929879
+        self.target.target_pose.pose.orientation.w = 0.520630786846
 
         self.callbacks = callbacks
-        self.led_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
+        self.led1_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
+        self.led2_pub = rospy.Publisher('/mobile_base/commands/led2', Led, queue_size=1)
+        self.sound_pub = rospy.Publisher('/mobile_base/commands/sound', Sound, queue_size=1)
 
     def execute(self, userdata):
         global shutdown_requested
@@ -418,7 +430,21 @@ class Box1(smach.State):
         self.client.wait_for_result()
         print("Goal reached")
 
-        # TODO: check shape
+        try:
+            shape = v2.shapeDetection('red', 1)
+            print("red shape detected:" + shape)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+            shape = "triangle"
+
+        if shape == event_two.previous_shape:
+            self.led1_pub.publish(Led.GREEN)
+            self.led2_pub.publish(Led.ORANGE)
+            self.sound_pub.publish(1)
+            time.sleep(1)
+            self.led1_pub.publish(0)
+            self.led2_pub.publish(0)
 
         if shutdown_requested:
             return 'done4'
@@ -478,28 +504,30 @@ class Box4(smach.State):
 
         '''
         position: 
-            x: -0.82371839872
-            y: -2.01898909535
+            x: -0.821402459522
+            y: -2.05517900914
             z: 0.0
         orientation: 
             x: 0.0
             y: 0.0
-            z: 0.110374592646
-            w: 0.993890058959
+            z: 0.117709681697
+            w: 0.993048050617
         '''
 
         self.target = MoveBaseGoal()
         self.target.target_pose.header.frame_id = "map"
         self.target.target_pose.header.stamp = rospy.Time.now()
-        self.target.target_pose.pose.position.x = -0.82371839872
-        self.target.target_pose.pose.position.y = -2.01898909535
+        self.target.target_pose.pose.position.x = -0.821402459522
+        self.target.target_pose.pose.position.y = -2.05517900914
         self.target.target_pose.pose.orientation.x = 0.0
         self.target.target_pose.pose.orientation.y = 0.0
-        self.target.target_pose.pose.orientation.z = 0.110374592646
-        self.target.target_pose.pose.orientation.w = 0.993890058959
+        self.target.target_pose.pose.orientation.z = 0.117709681697
+        self.target.target_pose.pose.orientation.w = 0.993048050617
 
         self.callbacks = callbacks
-        self.led_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
+        self.led1_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
+        self.led2_pub = rospy.Publisher('/mobile_base/commands/led2', Led, queue_size=1)
+        self.sound_pub = rospy.Publisher('/mobile_base/commands/sound', Sound, queue_size=1)
 
     def execute(self, userdata):
         global shutdown_requested
@@ -508,7 +536,21 @@ class Box4(smach.State):
         self.client.wait_for_result()
         print("Goal reached")
 
-        # TODO: check shape
+        try:
+            shape = v2.shapeDetection('red', 1)
+            print("red shape detected:" + shape)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+            shape = "triangle"
+
+        if shape == event_two.previous_shape:
+            self.led1_pub.publish(Led.GREEN)
+            self.led2_pub.publish(Led.ORANGE)
+            self.sound_pub.publish(1)
+            time.sleep(1)
+            self.led1_pub.publish(0)
+            self.led2_pub.publish(0)
 
         if shutdown_requested:
             return 'done4'
@@ -524,28 +566,30 @@ class Box5(smach.State):
 
         '''
         position: 
-            x: -0.534573222531
-            y: -2.64808881431
+            x: -0.554389640585
+            y: -2.74567505632
             z: 0.0
         orientation: 
             x: 0.0
             y: 0.0
-            z: 0.0599241194844
-            w: 0.998202935231
+            z: 0.0851488643663
+            w: 0.99636824061
         '''
 
         self.target = MoveBaseGoal()
         self.target.target_pose.header.frame_id = "map"
         self.target.target_pose.header.stamp = rospy.Time.now()
-        self.target.target_pose.pose.position.x = -0.534573222531
-        self.target.target_pose.pose.position.y = -2.64808881431
+        self.target.target_pose.pose.position.x = -0.554389640585
+        self.target.target_pose.pose.position.y = -2.74567505632
         self.target.target_pose.pose.orientation.x = 0.0
         self.target.target_pose.pose.orientation.y = 0.0
-        self.target.target_pose.pose.orientation.z = 0.0599241194844
-        self.target.target_pose.pose.orientation.w = 0.998202935231
+        self.target.target_pose.pose.orientation.z = 0.0851488643663
+        self.target.target_pose.pose.orientation.w = 0.99636824061
 
         self.callbacks = callbacks
-        self.led_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
+        self.led1_pub = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
+        self.led2_pub = rospy.Publisher('/mobile_base/commands/led2', Led, queue_size=1)
+        self.sound_pub = rospy.Publisher('/mobile_base/commands/sound', Sound, queue_size=1)
 
     def execute(self, userdata):
         global shutdown_requested
@@ -554,7 +598,21 @@ class Box5(smach.State):
         self.client.wait_for_result()
         print("Goal reached")
 
-        # TODO: check shape
+        try:
+            shape = v2.shapeDetection('red', 1)
+            print("red shape detected:" + shape)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+            shape = "triangle"
+
+        if shape == event_two.previous_shape:
+            self.led1_pub.publish(Led.GREEN)
+            self.led2_pub.publish(Led.ORANGE)
+            self.sound_pub.publish(1)
+            time.sleep(1)
+            self.led1_pub.publish(0)
+            self.led2_pub.publish(0)
 
         if shutdown_requested:
             return 'done4'

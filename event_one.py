@@ -11,8 +11,12 @@ from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Joy
 import detect_shape
 from kobuki_msgs.msg import Sound
-
 import time
+import sys
+sys.path.insert(1, '/home/malcolm/Documents/CMPUT_412/Competition/CS412T1C4/shapeTesting')
+import v2
+
+
 
 global shutdown_requested
 
@@ -73,7 +77,7 @@ class Count(smach.State):
             count = 0
             loopTotal = 10
             for i in range(loopTotal):
-                count += detect_shape.count_objects(symbol_red_mask)
+                count += v2.count_objects(symbol_red_mask)
             real_count = math.ceil(count/loopTotal)
             print(real_count)
             for i in range(int(real_count)):

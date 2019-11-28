@@ -17,14 +17,15 @@ red_mask = [['a']]
 bridge = cv_bridge.CvBridge()
 shutdown_requested = False
 h, w, d = 0, 0, 0
-c1Triange = cv2.imread('c1Triangle.png', 0)
-c2Triange = cv2.imread('c2Triangle.png', 0)
-c1Square = cv2.imread('c1Square.png', 0)
-c2Square = cv2.imread('c2Square.png', 0)
-c1Circle = cv2.imread('c1Circle.png', 0)
-c2Circle = cv2.imread('c2Circle.png', 0)
+c1Triange = cv2.imread('./shapeTesting/c1Triangle.png', 0)
+c2Triange = cv2.imread('./shapeTesting/c2Triangle.png', 0)
+c1Square = cv2.imread('./shapeTesting/c1Square.png', 0)
+c2Square = cv2.imread('./shapeTesting/c2Square.png', 0)
+c1Circle = cv2.imread('./shapeTesting/c1Circle.png', 0)
+c2Circle = cv2.imread('./shapeTesting/c2Circle.png', 0)
 cntG = None
-cntR = None
+cntR1 = None
+cntR2 = None
 
 
 def request_shutdown(sig, frame):
@@ -97,15 +98,19 @@ def shapeDetection(colour, camera):
           Look at the 3 callback functions below to see how the variable is
           created
     '''
-    global cntG, cntR
+    global cntG, cntR1, cntR2
     maxCount = 10
     loop = 1000
     count = 0
     while count < maxCount:
         results = {"triangle":0, "square":0, "circle":0}
         for _ in range(loop):
-            if camera == 1: (cntT, cntS, cntC) = initC1Images()
-            elif camera == 2: (cntT, cntS, cntC) = initC2Images()
+            if camera == 1:
+                (cntT, cntS, cntC) = initC1Images()
+                cntR = cntR1
+            elif camera == 2:
+                (cntT, cntS, cntC) = initC2Images()
+                cntR = cntR2
             if colour == "green": result = compareImages(cntT, cntS, cntC, cntG)
             elif colour == "red": result = compareImages(cntT, cntS, cntC, cntR)
             results[result] += 1
@@ -117,9 +122,10 @@ def shapeDetection(colour, camera):
         count += 1
     return "triangle"
 
+
 def logitechRed_callback(msg):
     # print("callback")
-    global bridge, red_mask, h, w, d, cntR
+    global bridge, red_mask, h, w, d, cntR2
     image = bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -140,14 +146,15 @@ def logitechRed_callback(msg):
     blur = cv2.medianBlur(red_mask, 7)
     thresh = cv2.threshold(blur, 250, 255, 0)[1]
     image2, contours, hierarchy = cv2.findContours(thresh, 2, 1)
-    cntR = contours[0]
+    if len(contours) > 0:
+        cntR2 = contours[0]
     # cv2.imshow("red window",blur)
     # cv2.waitKey(3)
     return
 
 def cam1red_callback(msg):
     # print("callback")
-    global bridge, red_mask, h, w, d, cntR
+    global bridge, red_mask, h, w, d, cntR1
     image = bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -168,7 +175,8 @@ def cam1red_callback(msg):
     blur = cv2.medianBlur(red_mask, 7)
     thresh = cv2.threshold(blur, 250, 255, 0)[1]
     image2, contours, hierarchy = cv2.findContours(thresh, 2, 1)
-    cntR = contours[0]
+    if len(contours) > 0:
+        cntR1 = contours[0]
     # cv2.imshow("red window",blur)
     # cv2.waitKey(3)
     return
@@ -187,8 +195,22 @@ def cam1green_callback(msg):
     green_mask = blur
     thresh = cv2.threshold(blur, 250, 255, 0)[1]
     image2, contours, hierarchy = cv2.findContours(thresh, 2, 1)
-    cntG = contours[0]
+    if len(contours) > 0:
+        cntG = contours[0]
     return
+
+def count_objects(mask, threshold=1000, canvas=None):
+    """Count the number of distinct objects in the boolean image."""
+    _, contours, _ = cv2.findContours(mask, 1, 2)
+    moments = [cv2.moments(cont) for cont in contours]
+    big_moments = [m for m in moments if m["m00"] > threshold]
+    if canvas is not None:
+        for moment in big_moments:
+            cx = int(moment["m10"] / moment["m00"])
+            cy = int(moment["m01"] / moment["m00"])
+            cv2.circle(canvas, (cx, cy), 20, (0, 0, 255), -1)
+    return len(big_moments)
+
 
 def main():
     rospy.init_node('attempt')
@@ -197,9 +219,10 @@ def main():
                                       # Image, logitechRed_callback)
     # image_sub = rospy.Subscriber('camera/rgb/image_raw',
                                       # Image, logitechRed_callback)
-    image_sub = rospy.Subscriber('usb_cam/image_raw',
-                                    Image, logitechRed_callback)
+    # image_sub = rospy.Subscriber('usb_cam/image_raw',
+                                      # Image, logitechRed_callback)
     # (cntT, cntS, cntC) = initC1Images()
+
 
 if __name__ == '__main__':
     main()
