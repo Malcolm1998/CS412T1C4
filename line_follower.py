@@ -47,11 +47,11 @@ class Wait(smach.State):
         self.led1_pub.publish(0)
         self.led2_pub.publish(0)
         return 'follow_line'  # TODO: take out debug line
-        #while not shutdown_requested:
-        #    if self.callbacks.stopWaiting:
-        #        return 'follow_line'
-        #    time.sleep(1)
-        #return 'done'
+        while not shutdown_requested:
+            if self.callbacks.stopWaiting:
+                return 'follow_line'
+            time.sleep(1)
+        return 'done'
 
 
 class End(smach.State):
@@ -250,7 +250,7 @@ class FollowLine(smach.State):
                         self.prev_error = error
                     self.twist.linear.x = self.speed
                     self.twist.angular.z = rotation
-                    #print("test")
+                    print("test")
                     self.cmd_vel_pub.publish(self.twist)
         return 'done'
 
@@ -296,7 +296,7 @@ class Callbacks:
         self.bot_map_heading = None
 
         self.box_marker_id = 2
-        self.box_target_marker_id = 30
+        self.box_target_marker_id = 20
         self.box_position = None
         self.box_target_position = None
 
@@ -453,7 +453,7 @@ class Callbacks:
 
         # print(cv2.sumElems(red_mask)[0] / 255)
         #cv2.imshow("red window", bottom_red_mask)
-        #cv2.imshow("white window", bottom_white_mask)
+        #cv2.imshow("white window", self.line_white_mask)
         cv2.waitKey(3)
 
 
@@ -467,9 +467,9 @@ def main():
 
     #red_count = 0
     #red_count = 1
-    #red_count = 2  # Event 2
+    red_count = 2  # Event 2
     #red_count = 3  # Event four
-    red_count = 4  # Event 3
+    #red_count = 4  # Event 3
     #red_count = 6  # Last stop
 
     button_start = False
