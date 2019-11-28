@@ -9,7 +9,6 @@ from sensor_msgs.msg import Image
 import numpy as np
 from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Joy
-import detect_shape
 from kobuki_msgs.msg import Sound
 import time
 import sys

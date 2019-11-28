@@ -8,7 +8,6 @@ import event_one
 import event_two
 import event_three
 import event_four
-import detect_shape
 import signal
 import rospy
 import smach
@@ -26,6 +25,7 @@ from nav_msgs.msg import Odometry
 from kobuki_msgs.msg import Led
 from kobuki_msgs.msg import Sound
 from actionlib_msgs.msg import GoalStatusArray
+from kobuki_msgs.msg import BumperEvent
 import sys
 sys.path.insert(1, '/home/malcolm/Documents/CMPUT_412/Competition/CS412T1C4/shapeTesting')
 import v2
@@ -295,8 +295,8 @@ class Callbacks:
         self.bot_map_position = None
         self.bot_map_heading = None
 
-        self.box_marker_id = 6
-        self.box_target_marker_id = 20
+        self.box_marker_id = 2
+        self.box_target_marker_id = 30
         self.box_position = None
         self.box_target_position = None
 
@@ -484,6 +484,7 @@ def main():
 
     callbacks = Callbacks()
     rospy.Subscriber('/move_base/status', GoalStatusArray, callbacks.move_base_status_callback, queue_size=1)
+    rospy.Subscriber("/mobile_base/events/bumper", BumperEvent, callbacks.bumper_callback, queue_size=1)
     rospy.Subscriber('amcl_pose', PoseWithCovarianceStamped, callbacks.bot_map_pose_callback)
     rospy.Subscriber('/usb_cam/image_raw', Image, callbacks.secondary_image_callback)
     rospy.Subscriber('camera/rgb/image_raw', Image, callbacks.main_image_callback)
