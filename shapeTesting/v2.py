@@ -131,9 +131,14 @@ def logitechRed_callback(msg):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     h, w, d = image.shape
-    upper_red = numpy.array([177,255, 255])
-    lower_red = numpy.array([0, 150, 50])
-    red_mask = cv2.inRange(hsv, lower_red, upper_red)
+    upper_red_a = numpy.array([20, 255, 255])
+    lower_red_a = numpy.array([0, 150, 50])
+    red_mask_a = cv2.inRange(hsv, lower_red_a, upper_red_a)
+
+    upper_red_b = numpy.array([255, 255, 255])
+    lower_red_b = numpy.array([150, 150, 50])
+    red_mask_b = cv2.inRange(hsv, lower_red_b, upper_red_b)
+    red_mask = cv2.bitwise_or(red_mask_a, red_mask_b)
 
     blur = cv2.medianBlur(red_mask, 7)
     blur[0:h, 0:w/10] = 0
@@ -171,8 +176,9 @@ def cam1green_callback(msg):
     image = bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    upper_green = numpy.array([136, 255, 255])
-    lower_green = numpy.array([56, 43, 90])
+    upper_green = numpy.array([147, 255, 255])
+    #lower_green = numpy.array([56, 43, 90])
+    lower_green = numpy.array([77, 100, 100])
     green_mask = cv2.inRange(hsv, lower_green, upper_green)
     blur = cv2.medianBlur(green_mask, 7)
     blur[0:h / 4, 0:w] = 0
